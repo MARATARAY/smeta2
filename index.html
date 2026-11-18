@@ -14,14 +14,15 @@
       <h1>Смета за 5 минут</h1>
       <p class="intro">Добавьте позиции и цены — смета посчитается сама.</p>
     </header>
+    <h1 id="print-title" class="print-only"></h1>
 
     <section class="card" aria-labelledby="details-title">
       <h2 id="details-title">Реквизиты</h2>
       <div class="details-grid">
         <label>От кого<input id="sender" type="text" placeholder="Ваше имя или компания"></label>
         <label>Для кого<input id="recipient" type="text" placeholder="Клиент или организация"></label>
-        <label>Номер сметы<input id="estimate-number" type="text" placeholder="Например, 001"></label>
-        <label>Дата<input id="estimate-date" type="date"></label>
+        <label class="print-hidden">Номер сметы<input id="estimate-number" type="text" placeholder="Например, 001"></label>
+        <label class="print-hidden">Дата<input id="estimate-date" type="date"></label>
       </div>
     </section>
 
@@ -62,6 +63,15 @@
       <h2 id="total-title">Итого к оплате</h2>
       <output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output>
     </section>
+    <section class="card comment-card" aria-labelledby="comment-title">
+      <h2 id="comment-title"><label for="comment">Комментарий</label></h2>
+      <textarea id="comment" rows="3" placeholder="Сроки выполнения, условия оплаты"></textarea>
+    </section>
+    <p class="print-only signature">Подпись ____________________</p>
+    <div class="document-actions">
+      <button id="save-pdf" type="button">Сохранить PDF</button>
+      <p>В окне печати выберите «Сохранить как PDF».</p>
+    </div>
   </main>
 
   <template id="item-template">

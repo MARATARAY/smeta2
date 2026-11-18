@@ -100,3 +100,29 @@ document.querySelector("#estimate-date").value = [
 
 addItem(false);
 recalculate();
+
+// Текстовые копии позволяют печатать длинные значения целиком, без обрезки полями.
+function preparePrint() {
+  recalculate();
+  const number = document.querySelector("#estimate-number").value.trim() || "—";
+  const date = document.querySelector("#estimate-date").value;
+  const formattedDate = date ? date.split("-").reverse().join(".") : "—";
+  document.querySelector("#print-title").textContent = `Смета № ${number} от ${formattedDate}`;
+
+  document.querySelectorAll("main input, main select, main textarea").forEach((field) => {
+    let printValue = field.nextElementSibling;
+    if (!printValue || !printValue.classList.contains("print-value")) {
+      printValue = document.createElement("span");
+      printValue.className = "print-value";
+      printValue.setAttribute("aria-hidden", "true");
+      field.after(printValue);
+    }
+    printValue.textContent = field.value;
+  });
+}
+
+document.querySelector("#save-pdf").addEventListener("click", () => {
+  preparePrint();
+  window.print();
+});
+window.addEventListener("beforeprint", preparePrint);
