@@ -34,6 +34,50 @@ function roundAmount(value) {
   return Number.isFinite(value) ? Math.round(value) : 0;
 }
 
+function tengeAmountInWords(amount) {
+  if (!Number.isInteger(amount) || amount < 1 || amount > 999999999) return "";
+  const units = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
+  const teens = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
+  const tens = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
+  const hundreds = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"];
+
+  function groupWords(number, feminine = false) {
+    const words = [hundreds[Math.floor(number / 100)]];
+    const remainder = number % 100;
+    if (remainder >= 10 && remainder <= 19) words.push(teens[remainder - 10]);
+    else {
+      words.push(tens[Math.floor(remainder / 10)]);
+      const unit = remainder % 10;
+      words.push(feminine && unit === 1 ? "одна" : feminine && unit === 2 ? "две" : units[unit]);
+    }
+    return words.filter(Boolean).join(" ");
+  }
+
+  function plural(number, forms) {
+    const lastTwo = number % 100;
+    if (lastTwo >= 11 && lastTwo <= 14) return forms[2];
+    const last = number % 10;
+    return last === 1 ? forms[0] : last >= 2 && last <= 4 ? forms[1] : forms[2];
+  }
+
+  const words = [];
+  const millions = Math.floor(amount / 1000000);
+  const thousands = Math.floor(amount / 1000) % 1000;
+  const remainder = amount % 1000;
+  if (millions) words.push(groupWords(millions), plural(millions, ["миллион", "миллиона", "миллионов"]));
+  if (thousands) words.push(groupWords(thousands, true), plural(thousands, ["тысяча", "тысячи", "тысяч"]));
+  if (remainder) words.push(groupWords(remainder));
+  words.push("тенге");
+  const text = words.join(" ");
+  return text[0].toUpperCase() + text.slice(1);
+}
+
+function updateAmountWords(amount) {
+  const text = currencySelect.value === "₸" ? tengeAmountInWords(amount) : "";
+  document.querySelector("#amount-words").textContent = text;
+  document.querySelector("#amount-words-row").hidden = !text;
+}
+
 function updateSummary(outputId, rowId, amount) {
   document.querySelector(outputId).textContent = formatMoney(amount);
   if (rowId) document.querySelector(rowId).hidden = amount === 0;
@@ -57,6 +101,7 @@ function recalculate() {
   updateSummary("#discounted-total", "#discounted-row", discountedTotal);
   updateSummary("#vat-amount", "#vat-row", vat);
   grandTotal.textContent = formatMoney(roundAmount(discountedTotal + vat));
+  updateAmountWords(roundAmount(discountedTotal + vat));
   document.querySelectorAll("[data-price-label]").forEach((label) => {
     label.textContent = `Цена, ${currencySelect.value}`;
   });
@@ -229,6 +274,8 @@ function buildShareText() {
   }
   if (!document.querySelector("#vat-row").hidden) lines.push(`НДС (${readNumber(vatInput.value)} %): ${document.querySelector("#vat-amount").textContent}`);
   lines.push(`Итого к оплате: ${grandTotal.textContent}`);
+  const amountWords = document.querySelector("#amount-words").textContent;
+  if (amountWords) lines.push(`Сумма прописью: ${amountWords}`);
   const comment = document.querySelector("#comment").value.trim();
   if (comment) lines.push("", `Комментарий: ${comment}`);
   return lines.join("\n");
