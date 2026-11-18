@@ -28,6 +28,12 @@ textarea { resize: vertical; line-height: 1.5; }
 #save-pdf { padding: 12px 24px; border: 1px solid var(--accent); color: #fff; background: var(--accent); }
 #save-pdf:hover { background: #11513c; }
 .document-actions p { color: #5c6b64; font-size: 14px; margin: 0; }
+.secondary-button { padding: 12px 18px; border: 1px solid #b7d0c3; color: var(--accent); background: #fff; }
+.secondary-button:hover { background: #e1eee6; }
+.action-status { color: var(--accent); font-size: 14px; }
+.action-status:empty { margin: 0; }
+#manual-copy { margin-top: 20px; }
+#share-text { margin-top: 12px; }
 .print-only, .print-value { display: none; }
 input::placeholder { color: #7c8781; opacity: 1; }
 input:hover, select:hover { border-color: #94aa9e; }

@@ -7,6 +7,11 @@ const grandTotal = document.querySelector("#grand-total");
 const discountInput = document.querySelector("#discount-percent");
 const vatInput = document.querySelector("#vat-percent");
 const currencySelect = document.querySelector("#currency");
+const draftKey = "smeta5-draft-v1";
+const draftFieldIds = ["sender", "recipient", "estimate-number", "estimate-date", "discount-percent", "vat-percent", "currency", "comment"];
+const itemFields = { name: ".item-name", quantity: ".item-quantity", unit: ".item-unit", price: ".item-price" };
+let restoringDraft = true;
+let copyTimer;
 const moneyFormatter = new Intl.NumberFormat("ru-RU", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
@@ -61,6 +66,7 @@ function addItem(focus = true) {
   const row = itemTemplate.content.firstElementChild.cloneNode(true);
   items.append(row);
   recalculate();
+  saveDraft();
   if (focus) row.querySelector(".item-name").focus();
   return row;
 }
@@ -80,6 +86,7 @@ items.addEventListener("click", (event) => {
   if (nextRow) nextRow.querySelector(".item-name").focus();
   else addItem();
   recalculate();
+  saveDraft();
 });
 
 items.addEventListener("keydown", (event) => {
@@ -90,16 +97,10 @@ items.addEventListener("keydown", (event) => {
   addItem();
 });
 
-// Используем местную дату, чтобы UTC не сдвигал день около полуночи.
-const today = new Date();
-document.querySelector("#estimate-date").value = [
-  today.getFullYear(),
-  String(today.getMonth() + 1).padStart(2, "0"),
-  String(today.getDate()).padStart(2, "0"),
-].join("-");
-
-addItem(false);
-recalculate();
+function localDate() {
+  const today = new Date();
+  return [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+}
 
 // Текстовые копии позволяют печатать длинные значения целиком, без обрезки полями.
 function preparePrint() {
@@ -109,7 +110,7 @@ function preparePrint() {
   const formattedDate = date ? date.split("-").reverse().join(".") : "—";
   document.querySelector("#print-title").textContent = `Смета № ${number} от ${formattedDate}`;
 
-  document.querySelectorAll("main input, main select, main textarea").forEach((field) => {
+  document.querySelectorAll("main input, main select, #comment").forEach((field) => {
     let printValue = field.nextElementSibling;
     if (!printValue || !printValue.classList.contains("print-value")) {
       printValue = document.createElement("span");
@@ -126,3 +127,131 @@ document.querySelector("#save-pdf").addEventListener("click", () => {
   window.print();
 });
 window.addEventListener("beforeprint", preparePrint);
+
+function saveDraft() {
+  if (restoringDraft) return;
+  const fields = Object.fromEntries(draftFieldIds.map((id) => [id, document.getElementById(id).value]));
+  const positions = Array.from(items.rows, (row) => Object.fromEntries(
+    Object.entries(itemFields).map(([key, selector]) => [key, row.querySelector(selector).value])
+  ));
+  try {
+    localStorage.setItem(draftKey, JSON.stringify({ version: 1, fields, positions }));
+    document.querySelector("#draft-status").textContent = "";
+  } catch {
+    document.querySelector("#draft-status").textContent = "Не удалось сохранить черновик в браузере. Не закрывайте страницу до сохранения PDF или копирования текста.";
+  }
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(draftKey);
+    if (!raw) return false;
+    const draft = JSON.parse(raw);
+    // Проверяем весь черновик до изменения формы.
+    if (draft?.version !== 1 || !draft.fields || !Array.isArray(draft.positions)) return false;
+    if (!draftFieldIds.every((id) => typeof draft.fields[id] === "string")) return false;
+    if (!["₸", "₽", "$", "€"].includes(draft.fields.currency)) return false;
+    if (!draft.positions.every((position) => position && Object.keys(itemFields).every((key) => typeof position[key] === "string") && ["шт", "час", "услуга"].includes(position.unit))) return false;
+    for (const id of draftFieldIds) document.getElementById(id).value = draft.fields[id];
+    for (const position of draft.positions) {
+      const row = addItem(false);
+      for (const [key, selector] of Object.entries(itemFields)) row.querySelector(selector).value = position[key];
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearCopyFeedback() {
+  clearTimeout(copyTimer);
+  document.querySelector("#copy-status").textContent = "";
+  document.querySelector("#manual-copy").hidden = true;
+  document.querySelector("#share-text").value = "";
+}
+
+document.querySelector("main").addEventListener("input", (event) => {
+  if (!event.target.matches("input, select, #comment")) return;
+  clearCopyFeedback();
+  saveDraft();
+});
+document.querySelector("main").addEventListener("change", (event) => {
+  if (!event.target.matches("input, select, #comment")) return;
+  clearCopyFeedback();
+  saveDraft();
+});
+
+document.querySelector("#new-estimate").addEventListener("click", () => {
+  if (!window.confirm("Создать новую смету? Текущий черновик будет очищен.")) return;
+  const current = document.querySelector("#estimate-number").value.trim();
+  const match = current.match(/^(.*?)(\d+)$/);
+  const nextNumber = match ? match[1] + String(BigInt(match[2]) + 1n).padStart(match[2].length, "0") : "1";
+  restoringDraft = true;
+  for (const id of draftFieldIds) document.getElementById(id).value = "";
+  discountInput.value = "0";
+  vatInput.value = "0";
+  currencySelect.value = "₸";
+  document.querySelector("#estimate-number").value = nextNumber;
+  document.querySelector("#estimate-date").value = localDate();
+  items.replaceChildren();
+  document.querySelectorAll(".print-value").forEach((value) => value.remove());
+  document.querySelector("#print-title").textContent = "";
+  clearCopyFeedback();
+  addItem();
+  restoringDraft = false;
+  saveDraft();
+});
+
+function buildShareText() {
+  recalculate();
+  const number = document.querySelector("#estimate-number").value.trim() || "—";
+  const date = document.querySelector("#estimate-date").value;
+  const lines = [`Смета № ${number} от ${date ? date.split("-").reverse().join(".") : "—"}`];
+  for (const [id, label] of [["sender", "От кого"], ["recipient", "Для кого"]]) {
+    const value = document.getElementById(id).value.trim();
+    if (value) lines.push(`${label}: ${value}`);
+  }
+  lines.push("");
+  const quantityFormatter = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 20 });
+  for (const row of items.rows) {
+    const name = row.querySelector(".item-name").value.trim();
+    const quantity = row.querySelector(".item-quantity").value;
+    const price = row.querySelector(".item-price").value;
+    if (!name && !quantity.trim() && !price.trim()) continue;
+    const unit = row.querySelector(".item-unit").value;
+    const formattedQuantity = quantityFormatter.format(readNumber(quantity)).replace(/[\u00a0\u202f]/g, " ");
+    lines.push(`• ${name || "Без наименования"} — ${formattedQuantity} ${unit} × ${formatMoney(readNumber(price))} = ${row.querySelector(".line-total").textContent}`);
+  }
+  lines.push("", `Сумма: ${document.querySelector("#subtotal").textContent}`);
+  if (!document.querySelector("#discount-row").hidden) {
+    lines.push(`Скидка (${readNumber(discountInput.value)} %): ${document.querySelector("#discount-amount").textContent}`);
+    lines.push(`Сумма со скидкой: ${document.querySelector("#discounted-total").textContent}`);
+  }
+  if (!document.querySelector("#vat-row").hidden) lines.push(`НДС (${readNumber(vatInput.value)} %): ${document.querySelector("#vat-amount").textContent}`);
+  lines.push(`Итого к оплате: ${grandTotal.textContent}`);
+  const comment = document.querySelector("#comment").value.trim();
+  if (comment) lines.push("", `Комментарий: ${comment}`);
+  return lines.join("\n");
+}
+
+document.querySelector("#copy-whatsapp").addEventListener("click", async () => {
+  clearCopyFeedback();
+  const text = buildShareText();
+  try {
+    await navigator.clipboard.writeText(text);
+    document.querySelector("#copy-status").textContent = "Скопировано ✓";
+    copyTimer = setTimeout(() => { document.querySelector("#copy-status").textContent = ""; }, 2000);
+  } catch {
+    document.querySelector("#manual-copy").hidden = false;
+    const field = document.querySelector("#share-text");
+    field.value = text;
+    field.focus();
+    field.select();
+  }
+});
+
+document.querySelector("#estimate-date").value = localDate();
+restoreDraft();
+if (!items.rows.length) addItem(false);
+recalculate();
+restoringDraft = false;
