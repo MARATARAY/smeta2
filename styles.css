@@ -148,18 +148,9 @@ td:last-child, th:last-child { padding-right: 0; }
 .discount-setting input { border-color: var(--red); color: var(--text-primary); }
 #discount-row { color: var(--red); }
 @media screen {
-  .card.positions { border: 2px dashed #F26419; }
-  .total-card { animation: total-shadow-pulse 3s ease-in-out infinite; }
   .item-row { transition: background-color 0.2s; }
   .item-row:focus-within { background: #FCE9C7; }
   .item-row:hover { background: #FFF0D1; }
-}
-@keyframes total-shadow-pulse {
-  0%, 100% { box-shadow: 0 4px 14px rgba(242, 100, 25, .12); }
-  50% { box-shadow: 0 6px 22px rgba(242, 100, 25, .24); }
-}
-@media screen and (prefers-reduced-motion: reduce) {
-  .total-card { animation: none; box-shadow: 0 4px 14px rgba(242, 100, 25, .12); }
 }
 @media screen and (max-width: 640px) {
   .estimate-heading { align-items: stretch; flex-direction: column; gap: 18px; }
