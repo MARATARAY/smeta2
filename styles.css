@@ -96,6 +96,10 @@ textarea { resize: vertical; line-height: 1.5; }
 .document-actions p { color: var(--text-secondary); font-size: 14px; margin: 0; }
 .secondary-button { padding: 12px 18px; border: 1.5px solid var(--chocolate); color: var(--chocolate); background: transparent; }
 .secondary-button:hover { background: #FCE9C7; }
+#copy-messenger { width: 320px; max-width: 100%; font-size: 14px; }
+@media screen {
+  .total-card { flex-wrap: wrap; }
+}
 .action-status { color: var(--text-secondary); font-size: 14px; }
 .action-status:empty { margin: 0; }
 #manual-copy { margin-top: 20px; }

@@ -12,6 +12,8 @@ const draftFieldIds = ["sender", "recipient", "estimate-number", "estimate-date"
 const itemFields = { name: ".item-name", quantity: ".item-quantity", unit: ".item-unit", price: ".item-price" };
 let restoringDraft = true;
 let copyTimer;
+const messengerButton = document.querySelector("#copy-messenger");
+const messengerButtonText = messengerButton.textContent;
 const moneyFormatter = new Intl.NumberFormat("ru-RU", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
@@ -452,6 +454,7 @@ function restoreDraft() {
 
 function clearCopyFeedback() {
   clearTimeout(copyTimer);
+  messengerButton.textContent = messengerButtonText;
   document.querySelector("#copy-status").textContent = "";
   document.querySelector("#manual-copy").hidden = true;
   document.querySelector("#share-text").value = "";
@@ -524,13 +527,18 @@ function buildShareText() {
   return lines.join("\n");
 }
 
-document.querySelector("#copy-whatsapp").addEventListener("click", async () => {
+async function copyEstimate(event) {
+  const button = event.currentTarget;
   clearCopyFeedback();
   const text = buildShareText();
   try {
     await navigator.clipboard.writeText(text);
     document.querySelector("#copy-status").textContent = "Скопировано ✓";
-    copyTimer = setTimeout(() => { document.querySelector("#copy-status").textContent = ""; }, 2000);
+    if (button === messengerButton) messengerButton.textContent = "Скопировано!";
+    copyTimer = setTimeout(() => {
+      messengerButton.textContent = messengerButtonText;
+      document.querySelector("#copy-status").textContent = "";
+    }, 2000);
   } catch {
     document.querySelector("#manual-copy").hidden = false;
     const field = document.querySelector("#share-text");
@@ -538,7 +546,10 @@ document.querySelector("#copy-whatsapp").addEventListener("click", async () => {
     field.focus();
     field.select();
   }
-});
+}
+
+document.querySelector("#copy-whatsapp").addEventListener("click", copyEstimate);
+messengerButton.addEventListener("click", copyEstimate);
 
 document.querySelector("#estimate-date").value = localDate();
 restoreDraft();
