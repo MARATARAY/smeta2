@@ -8,7 +8,8 @@ const discountInput = document.querySelector("#discount-percent");
 const vatInput = document.querySelector("#vat-percent");
 const currencySelect = document.querySelector("#currency");
 const draftKey = "smeta5-draft-v1";
-const draftFieldIds = ["sender", "recipient", "estimate-number", "estimate-date", "discount-percent", "vat-percent", "currency", "comment"];
+const optionalDraftFieldIds = ["customer-name", "event-date"];
+const draftFieldIds = ["sender", "recipient", "estimate-number", "estimate-date", "discount-percent", "vat-percent", "currency", "comment", ...optionalDraftFieldIds];
 const itemFields = { name: ".item-name", quantity: ".item-quantity", unit: ".item-unit", price: ".item-price" };
 let restoringDraft = true;
 let copyTimer;
@@ -429,10 +430,10 @@ function restoreDraft() {
     const draft = JSON.parse(raw);
     // Проверяем весь черновик до изменения формы.
     if (draft?.version !== 1 || !draft.fields || !Array.isArray(draft.positions)) return false;
-    if (!draftFieldIds.every((id) => typeof draft.fields[id] === "string")) return false;
+    if (!draftFieldIds.every((id) => typeof draft.fields[id] === "string" || (optionalDraftFieldIds.includes(id) && draft.fields[id] === undefined))) return false;
     if (!["₸", "₽", "$", "€"].includes(draft.fields.currency)) return false;
     if (!draft.positions.every((position) => position && Object.keys(itemFields).every((key) => typeof position[key] === "string") && [...itemUnits, ...legacyUnits].includes(position.unit))) return false;
-    for (const id of draftFieldIds) document.getElementById(id).value = draft.fields[id];
+    for (const id of draftFieldIds) document.getElementById(id).value = draft.fields[id] ?? "";
     for (const position of draft.positions) {
       const row = addItem(false);
       for (const [key, selector] of Object.entries(itemFields)) row.querySelector(selector).value = position[key];
